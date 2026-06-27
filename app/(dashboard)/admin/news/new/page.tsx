@@ -1,6 +1,8 @@
-import dynamic from 'next/dynamic'
+export const dynamic = 'force-dynamic'
 
-const NewNewsForm = dynamic(() => import('./NewNewsForm'), { ssr: false })
+import nextDynamic from 'next/dynamic'
+
+const NewNewsForm = nextDynamic(() => import('./NewNewsForm'), { ssr: false, loading: () => null })
 
 export default function NewNewsPage() {
   return <NewNewsForm />

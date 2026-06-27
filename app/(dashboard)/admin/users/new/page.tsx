@@ -1,6 +1,8 @@
-import dynamic from 'next/dynamic'
+export const dynamic = 'force-dynamic'
 
-const NewUserForm = dynamic(() => import('./NewUserForm'), { ssr: false })
+import nextDynamic from 'next/dynamic'
+
+const NewUserForm = nextDynamic(() => import('./NewUserForm'), { ssr: false, loading: () => null })
 
 export default function NewUserPage() {
   return <NewUserForm />

@@ -1,6 +1,8 @@
-import dynamic from 'next/dynamic'
+export const dynamic = 'force-dynamic'
 
-const NewEventForm = dynamic(() => import('./NewEventForm'), { ssr: false })
+import nextDynamic from 'next/dynamic'
+
+const NewEventForm = nextDynamic(() => import('./NewEventForm'), { ssr: false, loading: () => null })
 
 export default function NewEventPage() {
   return <NewEventForm />

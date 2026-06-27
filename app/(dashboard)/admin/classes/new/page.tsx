@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic'
 
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
 
-const NewClassForm = dynamic(() => import('./NewClassForm'), { ssr: false, loading: () => null })
+const NewClassForm = nextDynamic(() => import('./NewClassForm'), { ssr: false, loading: () => null })
 
 export default function NewClassPage() {
   return <NewClassForm />
