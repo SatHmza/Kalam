@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   const events = await db.event.findMany({
     where: {
       schoolId,
-      startsAt: { gte: new Date() },
+      startsAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
       OR: [{ targetRoles: { isEmpty: true } }, { targetRoles: { has: role as any } }],
     },
     orderBy: { startsAt: 'asc' },
