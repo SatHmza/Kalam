@@ -1,0 +1,346 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  teacher
+  student
+  parent
+}
+
+enum ExamType {
+  devoir1
+  devoir2
+  examen_blanc
+  examen
+  controle
+  participation
+  custom
+}
+
+enum AbsenceStatus {
+  absent
+  late
+  excused
+}
+
+enum MessageScope {
+  broadcast
+  direct
+}
+
+enum NotifType {
+  grade_posted
+  material_posted
+  exercise_deadline
+  absence_marked
+  message_received
+  news_published
+  event_added
+}
+
+model School {
+  id             String @id @default(cuid())
+  name           String
+  nameAr         String?
+  slug           String @unique
+  logoUrl        String?
+  city           String?
+  storageQuotaMb Int    @default(5120)
+  storageUsedMb  Int    @default(0)
+  primaryColor   String @default("#1d4ed8")
+  createdAt      DateTime @default(now())
+
+  users         User[]
+  academicYears AcademicYear[]
+  classes       Class[]
+  subjects      Subject[]
+  gradeEntries  GradeEntry[]
+  absences      Absence[]
+  materials     Material[]
+  submissions   Submission[]
+  messages      Message[]
+  news          News[]
+  events        Event[]
+  notifications Notification[]
+}
+
+model User {
+  id         String   @id @default(cuid())
+  schoolId   String
+  role       UserRole
+  fullName   String
+  fullNameAr String?
+  email      String?
+  phone      String?
+  password   String?
+  avatarUrl  String?
+  langPref   String   @default("fr")
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  classSubjectsTeaching ClassSubject[]
+  gradeEntriesMarked    GradeEntry[]   @relation("GradeMarkedBy")
+  absencesMarked        Absence[]      @relation("AbsenceMarkedBy")
+  materialsCreated      Material[]
+  enrollments           Enrollment[]
+  gradeEntries          GradeEntry[]
+  absences              Absence[]
+  submissions           Submission[]
+  children              ParentChild[]  @relation("ParentChildren")
+  parents               ParentChild[]  @relation("StudentParents")
+  sentMessages          Message[]      @relation("SentMessages")
+  receivedMessages      Message[]      @relation("ReceivedMessages")
+  messageReads          MessageRead[]
+  newsCreated           News[]
+  eventsCreated         Event[]
+  notifications         Notification[]
+
+  @@unique([schoolId, email])
+}
+
+model AcademicYear {
+  id        String    @id @default(cuid())
+  schoolId  String
+  label     String
+  isCurrent Boolean   @default(false)
+  startsOn  DateTime?
+  endsOn    DateTime?
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes Class[]
+}
+
+model Class {
+  id             String  @id @default(cuid())
+  schoolId       String
+  academicYearId String
+  name           String
+  label          String
+  labelAr        String?
+  level          String?
+
+  school        School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear  AcademicYear  @relation(fields: [academicYearId], references: [id])
+  classSubjects ClassSubject[]
+  enrollments   Enrollment[]
+  absences      Absence[]
+  broadcasts    Message[]     @relation("ClassBroadcasts")
+}
+
+model Subject {
+  id       String  @id @default(cuid())
+  schoolId String
+  name     String
+  nameAr   String?
+  code     String?
+
+  school        School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classSubjects ClassSubject[]
+  absences      Absence[]
+}
+
+model ClassSubject {
+  id        String @id @default(cuid())
+  classId   String
+  subjectId String
+  teacherId String
+
+  class    Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject  Subject @relation(fields: [subjectId], references: [id])
+  teacher  User    @relation(fields: [teacherId], references: [id])
+
+  gradeEntries GradeEntry[]
+  materials    Material[]
+
+  @@unique([classId, subjectId])
+}
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  studentId  String
+  classId    String
+  enrolledAt DateTime @default(now())
+
+  student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, classId])
+}
+
+model ParentChild {
+  parentId  String
+  studentId String
+  relation  String?
+
+  parent  User @relation("ParentChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  student User @relation("StudentParents", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([parentId, studentId])
+}
+
+model GradeEntry {
+  id             String   @id @default(cuid())
+  schoolId       String
+  studentId      String
+  classSubjectId String
+  examType       ExamType
+  examLabel      String?
+  score          Float?
+  maxScore       Float    @default(20)
+  coefficient    Float    @default(1)
+  semester       Int?
+  note           String?
+  gradedAt       DateTime @default(now())
+  gradedById     String
+
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student      User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classSubject ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  gradedBy     User         @relation("GradeMarkedBy", fields: [gradedById], references: [id])
+}
+
+model Absence {
+  id         String        @id @default(cuid())
+  schoolId   String
+  studentId  String
+  classId    String
+  subjectId  String?
+  date       DateTime
+  period     String?
+  status     AbsenceStatus @default(absent)
+  note       String?
+  markedById String
+  markedAt   DateTime      @default(now())
+
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject   Subject? @relation(fields: [subjectId], references: [id])
+  markedBy  User     @relation("AbsenceMarkedBy", fields: [markedById], references: [id])
+}
+
+model Material {
+  id               String    @id @default(cuid())
+  schoolId         String
+  classSubjectId   String
+  type             String
+  title            String
+  description      String?
+  fileUrl          String?
+  fileSizeKb       Int?
+  deadline         DateTime?
+  allowsSubmission Boolean   @default(false)
+  publishedAt      DateTime  @default(now())
+  createdById      String
+
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classSubject ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id])
+  submissions  Submission[]
+}
+
+model Submission {
+  id          String   @id @default(cuid())
+  schoolId    String
+  materialId  String
+  studentId   String
+  fileUrl     String
+  fileSizeKb  Int?
+  submittedAt DateTime @default(now())
+  isLate      Boolean  @default(false)
+  teacherNote String?
+
+  school   School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  student  User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([materialId, studentId])
+}
+
+model Message {
+  id            String       @id @default(cuid())
+  schoolId      String
+  senderId      String
+  scope         MessageScope
+  targetClassId String?
+  recipientId   String?
+  subject       String?
+  body          String
+  sentAt        DateTime     @default(now())
+
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  sender      User        @relation("SentMessages", fields: [senderId], references: [id])
+  targetClass Class?      @relation("ClassBroadcasts", fields: [targetClassId], references: [id])
+  recipient   User?       @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  reads       MessageRead[]
+}
+
+model MessageRead {
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+}
+
+model News {
+  id          String   @id @default(cuid())
+  schoolId    String
+  title       String
+  titleAr     String?
+  body        String
+  bodyAr      String?
+  coverUrl    String?
+  published   Boolean  @default(false)
+  pinned      Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdById], references: [id])
+}
+
+model Event {
+  id          String     @id @default(cuid())
+  schoolId    String
+  title       String
+  titleAr     String?
+  description String?
+  startsAt    DateTime
+  endsAt      DateTime?
+  location    String?
+  targetRoles UserRole[]
+  createdById String
+  createdAt   DateTime   @default(now())
+
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdById], references: [id])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  schoolId  String
+  userId    String
+  type      NotifType
+  title     String
+  body      String?
+  refId     String?
+  refType   String?
+  read      Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
