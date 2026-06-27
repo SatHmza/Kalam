@@ -19,6 +19,14 @@ export default function NewsActions({ newsId, published, pinned }: { newsId: str
     setLoading(false)
   }
 
+  async function deleteNews() {
+    if (!confirm('Supprimer cette actualité ?')) return
+    setLoading(true)
+    await fetch(`/api/news/${newsId}`, { method: 'DELETE' })
+    router.refresh()
+    setLoading(false)
+  }
+
   return (
     <div className="flex flex-col gap-1 shrink-0">
       <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => toggle('published')} disabled={loading}>
@@ -26,6 +34,9 @@ export default function NewsActions({ newsId, published, pinned }: { newsId: str
       </Button>
       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toggle('pinned')} disabled={loading}>
         {pinned ? 'Désépingler' : 'Épingler'}
+      </Button>
+      <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={deleteNews} disabled={loading}>
+        Supprimer
       </Button>
     </div>
   )

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { CalendarDays, Plus, MapPin } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import DeleteEventButton from './DeleteEventButton'
 
 export default async function EventsPage() {
   const session = await getServerSession(authOptions)
@@ -51,6 +52,7 @@ export default async function EventsPage() {
                     </p>
                   )}
                 </div>
+                <DeleteEventButton eventId={event.id} />
               </CardContent>
             </Card>
           ))}
