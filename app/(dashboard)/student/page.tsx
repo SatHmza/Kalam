@@ -5,13 +5,13 @@ import { db } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatDate, gradeColor, formatScore } from '@/lib/utils'
-import { Clock, MessageSquare } from 'lucide-react'
+import { Clock, MessageSquare, CalendarDays } from 'lucide-react'
 
 export default async function StudentDashboard() {
   const session = await getServerSession(authOptions)
   const { id: studentId, schoolId } = session!.user
 
-  const [recentGrades, absences, upcomingExercises, unreadCount, news] = await Promise.all([
+  const [recentGrades, absences, upcomingExercises, unreadCount, news, events] = await Promise.all([
     db.gradeEntry.findMany({
       where: { studentId },
       orderBy: { gradedAt: 'desc' },
@@ -41,6 +41,15 @@ export default async function StudentDashboard() {
       orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
       take: 3,
       select: { id: true, title: true, pinned: true, createdAt: true },
+    }),
+    db.event.findMany({
+      where: {
+        schoolId,
+        startsAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+        OR: [{ targetRoles: { isEmpty: true } }, { targetRoles: { has: 'student' } }],
+      },
+      orderBy: { startsAt: 'asc' },
+      take: 5,
     }),
   ])
 
@@ -119,6 +128,24 @@ export default async function StudentDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Events */}
+      {events.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Événements à venir</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {events.map((e) => (
+              <div key={e.id} className="flex items-start gap-3">
+                <CalendarDays className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">{e.title}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(e.startsAt.toISOString())}{e.location ? ` · ${e.location}` : ''}</p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* News */}
       {news.length > 0 && (
